@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools >= 61.0", "wheel", "cmake"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "pyscf-dispersion"
+dynamic = ["version"]
+description = "DFTD3 and DFTD4 interfaces"
+readme = "README.md"
+classifiers = [
+  'Development Status :: 4 - Beta',
+  'Intended Audience :: Science/Research',
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: Apache Software License',
+  'Programming Language :: C',
+  'Programming Language :: Python',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+  'Topic :: Software Development',
+  'Topic :: Scientific/Engineering',
+  'Operating System :: POSIX',
+  'Operating System :: Unix',
+  'Operating System :: MacOS',
+]
+
+maintainers = [{ name = "Qiming Sun", email = "osirpt.sun@gmail.com" }]
+
+authors = [{ name = "Qiming Sun", email = "osirpt.sun@gmail.com" }]
+
+license = { text = "Apache-2.0" }
+
+dependencies = [
+  'pyscf',
+]
+
+[project.urls]
+Homepage = "http://www.pyscf.org"
+Repository = "https://github.com/pyscf/dftd3-builder"
+Documentation = "http://www.pyscf.org"

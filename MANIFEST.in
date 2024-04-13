@@ -1,0 +1,6 @@
+include MANIFEST.in
+
+recursive-include pyscf/lib *.so
+
+prune pyscf/lib/build
+prune pyscf/lib/deps
