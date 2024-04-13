@@ -18,7 +18,7 @@ import numpy as np
 import ctypes
 from pyscf import lib, gto
 
-libdftd4 = np.ctypeslib.load_library('libdftd4')
+libdftd4 = lib.load_library('libdftd4')
 
 class _d4_restype(ctypes.Structure):
     pass

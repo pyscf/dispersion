@@ -18,7 +18,7 @@ import numpy as np
 import ctypes
 from pyscf import lib, gto
 
-libdftd3 = np.ctypeslib.load_library('libs-dftd3')
+libdftd3 = lib.load_library('libs-dftd3')
 
 _load_damping_param = {
     "d3bj":   libdftd3.dftd3_load_rational_damping,      #RationalDampingParam,
