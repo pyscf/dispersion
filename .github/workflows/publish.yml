@@ -74,10 +74,12 @@ jobs:
         version: 11
     - uses: actions/checkout@v3
     - name: Build wheels
-      run: |
-          pip3 install wheel
-          pip3 wheel -v --no-deps --no-clean -w mac-wheels .
-          ls mac-wheels
+      uses: pypa/cibuildwheel@v2.14.1
+      env:
+        CIBW_BUILD: cp311-macosx_x86_64
+        CIBW_BUILD_VERBOSITY: "1"
+      with:
+        output-dir: mac-wheels
     - name: Publish to PyPI
       run: |
           pip3 install twine
@@ -95,10 +97,14 @@ jobs:
         version: 11
     - uses: actions/checkout@v3
     - name: Build wheels
-      run: |
-          pip3 install wheel
-          pip3 wheel -v --no-deps --no-clean -w mac-wheels .
-          ls mac-wheels
+      uses: pypa/cibuildwheel@v2.14.1
+      env:
+        CIBW_BUILD: cp311-macosx_arm64
+        CIBW_BUILD_VERBOSITY: "1"
+        CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+        CMAKE_OSX_ARCHITECTURES: arm64
+      with:
+        output-dir: mac-wheels
     - name: Publish to PyPI
       run: |
           pip3 install twine
