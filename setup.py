@@ -84,6 +84,15 @@ class CMakeBuildPy(build_py):
             self.spawn(cmd)
         super().run()
 
+# build_py will produce plat_name = 'any'. Patch the bdist_wheel to change the
+# platform tag because the C extensions are platform dependent.
+from wheel.bdist_wheel import bdist_wheel
+initialize_options = bdist_wheel.initialize_options
+def initialize_with_default_plat_name(self):
+    initialize_options(self)
+    self.plat_name = get_platform()
+bdist_wheel.initialize_options = initialize_with_default_plat_name
+
 setup(
     version=VERSION,
     include_package_data=True,

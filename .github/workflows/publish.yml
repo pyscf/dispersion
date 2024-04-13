@@ -1,0 +1,107 @@
+name: Publish
+
+on:
+  release:
+    types:
+    # Note: editing the prerelease then marking as release does not trigger
+    # this pipeline
+    # - prereleased
+    - released
+  workflow_dispatch:
+
+jobs:
+  release-pypi-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build wheels
+      run: |
+          docker run --rm -v ${{ github.workspace }}:/src:rw --workdir=/src \
+          pyscf/pyscf-pypa-env:latest \
+          bash -exc '/opt/python/cp39-cp39/bin/pip wheel -v --no-deps --no-clean -w /root/wheelhouse /src && \
+          ls /root/wheelhouse && \
+          whl=`ls /root/wheelhouse/pyscf*_x86_64.whl` && \
+          auditwheel -v repair "$whl" -w /src/linux-wheels'
+    - name: List available wheels
+      run: |
+        ls ${{ github.workspace }}/linux-wheels
+    - name: Publish to PyPI
+      run: |
+          pip3 install twine
+          export TWINE_USERNAME=__token__
+          export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
+          twine upload --verbose ${{ github.workspace }}/linux-wheels/*
+
+  release-pypi-aarch64:
+    runs-on: ubuntu-latest
+    env:
+      img: quay.io/pypa/manylinux2014_aarch64:2023-03-12-25fd859
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up QEMU
+      id: qemu
+      uses: docker/setup-qemu-action@v2
+    - name: Build Wheel
+      run: |
+            docker run --rm -v ${{ github.workspace }}:/src:rw --workdir=/src \
+            ${{ env.img }} \
+            bash -exc '/opt/python/cp39-cp39/bin/pip install --upgrade pip setuptools && \
+            yum install -y epel-release && \
+            yum-config-manager --enable epel && \
+            yum install -y openblas-devel gcc && \
+            /opt/python/cp39-cp39/bin/pip wheel -v --no-deps --no-clean -w /root/wheelhouse /src && \
+            ls /root/wheelhouse && \
+            whl=`ls /root/wheelhouse/pyscf*-linux_*.whl` && \
+            auditwheel -v repair "$whl" -w /src/linux-wheels'
+    - name: List available wheels
+      run: |
+        ls ${{ github.workspace }}/linux-wheels
+    - name: Publish to PyPI
+      run: |
+          pip3 install twine
+          export TWINE_USERNAME=__token__
+          export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
+          twine upload --verbose ${{ github.workspace }}/linux-wheels/*
+
+  release-pypi-macos-x86:
+    name: Build wheels for macos
+    runs-on: macos-12
+    steps:
+    - uses: fortran-lang/setup-fortran@v1
+      with:
+        compiler: gcc
+        version: 11
+    - uses: actions/checkout@v3
+    - name: Build wheels
+      run: |
+          pip3 install wheel
+          pip3 wheel -v --no-deps --no-clean -w mac-wheels .
+          ls mac-wheels
+    - name: Publish to PyPI
+      run: |
+          pip3 install twine
+          export TWINE_USERNAME=__token__
+          export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
+          twine upload --verbose mac-wheels/*
+
+  release-pypi-macos-arm64:
+    name: Build wheels for Apple M chips
+    runs-on: macos-12
+    steps:
+    - uses: fortran-lang/setup-fortran@v1
+      with:
+        compiler: gcc
+        version: 11
+    - uses: actions/checkout@v3
+    - name: Build wheels
+      run: |
+          pip3 install wheel
+          pip3 wheel -v --no-deps --no-clean -w mac-wheels .
+          ls mac-wheels
+    - name: Publish to PyPI
+      run: |
+          pip3 install twine
+          export TWINE_USERNAME=__token__
+          export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
+          twine upload --verbose mac-wheels/*
