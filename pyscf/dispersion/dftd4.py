@@ -30,8 +30,20 @@ libdftd4.dftd4_new_structure.restype         = _d4_p
 libdftd4.dftd4_new_d4_model.restype          = _d4_p
 libdftd4.dftd4_load_rational_damping.restype = _d4_p
 
+def error_check(err):
+    if libdftd4.dftd4_check_error(err):
+        size = ctypes.c_int(2048)
+        message = ctypes.create_string_buffer(2048)
+        libdftd4.dftd4_get_error(err, message, ctypes.byref(size))
+        raise RuntimeError(message.value.decode())
+
 class DFTD4Dispersion(lib.StreamObject):
     def __init__(self, mol, xc, atm=False):
+        xc_lc = xc.lower().replace('-', '').replace('_', '').encode()
+        self._disp = None
+        self._mol = None
+        self._param = None
+
         coords = np.asarray(mol.atom_coords(), dtype=np.double, order='C')
         charge = np.array([mol.charge], dtype=np.double)
         nuc_types = [gto.charge(mol.atom_symbol(ia))
@@ -51,20 +63,26 @@ class DFTD4Dispersion(lib.StreamObject):
             self._lattice,
             self._periodic,
         )
+        error_check(err)
 
         self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+        error_check(err)
         self._param = libdftd4.dftd4_load_rational_damping(
             err,
-            ctypes.create_string_buffer(xc.encode(), size=50),
+            xc_lc,
             ctypes.c_bool(atm))
+        error_check(err)
 
         libdftd4.dftd4_delete_error(ctypes.byref(err))
 
     def __del__(self):
         err = libdftd4.dftd4_new_error()
-        libdftd4.dftd4_delete_param(ctypes.byref(self._param))
-        libdftd4.dftd4_delete_structure(err, ctypes.byref(self._mol))
-        libdftd4.dftd4_delete_model(err, ctypes.byref(self._disp))
+        if self._param:
+            libdftd4.dftd4_delete_param(ctypes.byref(self._param))
+        if self._mol:
+            libdftd4.dftd4_delete_structure(err, ctypes.byref(self._mol))
+        if self._disp:
+            libdftd4.dftd4_delete_model(err, ctypes.byref(self._disp))
         libdftd4.dftd4_delete_error(ctypes.byref(err))
 
     def get_dispersion(self, grad=False):
@@ -90,6 +108,8 @@ class DFTD4Dispersion(lib.StreamObject):
             _energy.ctypes.data_as(ctypes.c_void_p),
             _gradient_str,
             _sigma_str)
+        error_check(err)
+
         res = dict(energy=_energy)
         if _gradient is not None:
             res.update(gradient=_gradient)

@@ -43,9 +43,22 @@ libdftd3.dftd3_load_mrational_damping.restype      = _d3_p
 libdftd3.dftd3_load_zero_damping.restype           = _d3_p
 libdftd3.dftd3_load_rational_damping.restype       = _d3_p
 libdftd3.dftd3_new_d3_model.restype                = _d3_p
+libdftd3.dftd3_check_error.restype                 = ctypes.c_int
+
+def error_check(err):
+    if libdftd3.dftd3_check_error(err):
+        size = ctypes.c_int(2048)
+        message = ctypes.create_string_buffer(2048)
+        libdftd3.dftd3_get_error(err, message, ctypes.byref(size))
+        raise RuntimeError(message.value.decode())
 
 class DFTD3Dispersion(lib.StreamObject):
     def __init__(self, mol, xc, version='d3bj', atm=False):
+        xc_lc = xc.lower().replace('-', '').replace('_', '').encode()
+        self._disp = None
+        self._mol = None
+        self._param = None
+
         coords = np.asarray(mol.atom_coords(), dtype=np.double, order='C')
         nuc_types = [gto.charge(mol.atom_symbol(ia))
                      for ia in range(mol.natm)]
@@ -63,20 +76,25 @@ class DFTD3Dispersion(lib.StreamObject):
             self._lattice,
             self._periodic,
         )
+        error_check(err)
 
         self._disp = libdftd3.dftd3_new_d3_model(err, self._mol)
+        error_check(err)
+
         self._param = _load_damping_param[version](
             err,
-            ctypes.create_string_buffer(xc.encode(), size=50),
+            xc_lc,
             ctypes.c_bool(atm))
-
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+        error_check(err)
 
     def __del__(self):
         err = libdftd3.dftd3_new_error()
-        libdftd3.dftd3_delete_param(ctypes.byref(self._param))
-        libdftd3.dftd3_delete_structure(err, ctypes.byref(self._mol))
-        libdftd3.dftd3_delete_model(err, ctypes.byref(self._disp))
+        if self._param:
+            libdftd3.dftd3_delete_param(ctypes.byref(self._param))
+        if self._disp:
+            libdftd3.dftd3_delete_model(err, ctypes.byref(self._disp))
+        if self._mol:
+            libdftd3.dftd3_delete_structure(err, ctypes.byref(self._mol))
         libdftd3.dftd3_delete_error(ctypes.byref(err))
 
     def get_dispersion(self, grad=False):
@@ -102,6 +120,8 @@ class DFTD3Dispersion(lib.StreamObject):
             _energy.ctypes.data_as(ctypes.c_void_p),
             _gradient_str,
             _sigma_str)
+        error_check(err)
+
         res = dict(energy=_energy)
         if _gradient is not None:
             res.update(gradient=_gradient)
