@@ -21,4 +21,6 @@ jobs:
             pip install -e .
             pip install pytest
       - name: Test
-        run: pytest -s pyscf/dispersion
+        run: |
+            export PYSCF_EXT_PATH=$(pwd):$PYSCF_EXT_PATH
+            pytest -s pyscf/dispersion
