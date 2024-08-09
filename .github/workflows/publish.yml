@@ -35,7 +35,7 @@ jobs:
   release-pypi-aarch64:
     runs-on: ubuntu-latest
     env:
-      img: quay.io/pypa/manylinux2014_aarch64:2023-03-12-25fd859
+      img: quay.io/pypa/manylinux2014_aarch64:2024-08-03-32dfa47
     steps:
     - name: Checkout
       uses: actions/checkout@v3
