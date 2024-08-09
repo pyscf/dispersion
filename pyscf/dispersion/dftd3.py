@@ -64,8 +64,13 @@ class DFTD3Dispersion(lib.StreamObject):
                      for ia in range(mol.natm)]
         nuc_types = np.asarray(nuc_types, dtype=np.int32)
         self.natm = mol.natm
-        self._lattice = lib.c_null_ptr()
-        self._periodic = lib.c_null_ptr()
+        if isinstance(mol, gto.Mole):
+            lattice = lib.c_null_ptr()
+            periodic = lib.c_null_ptr()
+        else: # pbc.gto.Cell
+            a = mol.lattice_vectors()
+            lattice = a.ctypes
+            periodic = ctypes.byref(ctypes.c_bool(True))
 
         err = libdftd3.dftd3_new_error()
         self._mol = libdftd3.dftd3_new_structure(
@@ -73,8 +78,7 @@ class DFTD3Dispersion(lib.StreamObject):
             ctypes.c_int(mol.natm),
             nuc_types.ctypes.data_as(ctypes.c_void_p),
             coords.ctypes.data_as(ctypes.c_void_p),
-            self._lattice,
-            self._periodic,
+            lattice, periodic,
         )
         error_check(err)
 
