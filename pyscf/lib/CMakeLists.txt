@@ -19,7 +19,7 @@ include(ExternalProject)
 # statically compile deps mctc mstore
 ExternalProject_Add(dftd3_static
   GIT_REPOSITORY "https://github.com/dftd3/simple-dftd3"
-  GIT_TAG v1.0.0
+  GIT_TAG 70ceeb3033705e41f93c9acd2e422d40ce0a02d9
   PREFIX ${PROJECT_BINARY_DIR}/deps
   INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
   CMAKE_ARGS -DWITH_OpenMP=OFF
@@ -29,7 +29,7 @@ ExternalProject_Add(dftd3_static
 )
 ExternalProject_Add(dftd3
   GIT_REPOSITORY "https://github.com/dftd3/simple-dftd3"
-  GIT_TAG v1.0.0
+  GIT_TAG 70ceeb3033705e41f93c9acd2e422d40ce0a02d9
   PREFIX ${PROJECT_BINARY_DIR}/deps
   INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
   CMAKE_ARGS -DWITH_OpenMP=OFF -DBUILD_SHARED_LIBS=ON
@@ -42,7 +42,7 @@ add_dependencies(dftd3 dftd3_static)
 # statically compile deps mctc mstore
 ExternalProject_Add(dftd4_static
   GIT_REPOSITORY "https://github.com/dftd4/dftd4"
-  GIT_TAG v3.6.0
+  GIT_TAG v3.7.0
   PREFIX ${PROJECT_BINARY_DIR}/deps
   INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
   CMAKE_ARGS -DWITH_OpenMP=OFF
@@ -51,7 +51,7 @@ ExternalProject_Add(dftd4_static
 )
 ExternalProject_Add(dftd4
   GIT_REPOSITORY "https://github.com/dftd4/dftd4"
-  GIT_TAG v3.6.0
+  GIT_TAG v3.7.0
   PREFIX ${PROJECT_BINARY_DIR}/deps
   INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
   CMAKE_ARGS -DWITH_OpenMP=OFF -DBUILD_SHARED_LIBS=ON

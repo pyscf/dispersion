@@ -28,7 +28,9 @@ _d4_p = ctypes.POINTER(_d4_restype)
 libdftd4.dftd4_new_error.restype             = _d4_p
 libdftd4.dftd4_new_structure.restype         = _d4_p
 libdftd4.dftd4_new_d4_model.restype          = _d4_p
+libdftd4.dftd4_custom_d4_model.restype       = _d4_p
 libdftd4.dftd4_load_rational_damping.restype = _d4_p
+libdftd4.dftd4_new_rational_damping.restype  = _d4_p
 
 def error_check(err):
     if libdftd4.dftd4_check_error(err):
@@ -38,8 +40,8 @@ def error_check(err):
         raise RuntimeError(message.value.decode())
 
 class DFTD4Dispersion(lib.StreamObject):
-    def __init__(self, mol, xc, atm=False):
-        xc_lc = xc.lower().replace('-', '').replace('_', '').encode()
+    def __init__(self, mol, xc, ga=None, gc=None, wf=None, atm=False):
+        xc_lc = xc.lower().encode()
         self._disp = None
         self._mol = None
         self._param = None
@@ -49,6 +51,7 @@ class DFTD4Dispersion(lib.StreamObject):
         nuc_types = [gto.charge(mol.atom_symbol(ia))
                      for ia in range(mol.natm)]
         nuc_types = np.asarray(nuc_types, dtype=np.int32)
+        
         self.natm = mol.natm
         if isinstance(mol, gto.Mole):
             lattice = lib.c_null_ptr()
@@ -68,8 +71,20 @@ class DFTD4Dispersion(lib.StreamObject):
             lattice, periodic,
         )
         error_check(err)
-
-        self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+        if ga is None and gc is None and wf is None:
+            self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+        else:
+            # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
+            if ga is None:
+                ga = 3.0
+            if gc is None:
+                gc = 2.0
+            if wf is None:
+                wf = 6.0
+            self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol, 
+                                                        ctypes.c_double(ga), 
+                                                        ctypes.c_double(gc), 
+                                                        ctypes.c_double(wf))
         error_check(err)
         self._param = libdftd4.dftd4_load_rational_damping(
             err,
@@ -88,6 +103,16 @@ class DFTD4Dispersion(lib.StreamObject):
         if self._disp:
             libdftd4.dftd4_delete_model(err, ctypes.byref(self._disp))
         libdftd4.dftd4_delete_error(ctypes.byref(err))
+
+    def set_param(self, s8, a1, a2, s6=1.0, s9=1.0, alp=16.0):
+        self._param = libdftd4.dftd4_new_rational_damping(
+            ctypes.c_double(s6),
+            ctypes.c_double(s8), 
+            ctypes.c_double(s9), 
+            ctypes.c_double(a1), 
+            ctypes.c_double(a2), 
+            ctypes.c_double(alp))
+        return
 
     def get_dispersion(self, grad=False):
         res = {}

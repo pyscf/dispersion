@@ -1,0 +1,9 @@
+prefix=/mlx_devbox/users/xiaojie.wu/playground/dispersion/pyscf/lib/deps
+libdir=${prefix}//mlx_devbox/users/xiaojie.wu/playground/dispersion/pyscf/lib
+includedir=${prefix}/include
+
+Name: s-dftd3
+Description: Simple reimplementation of the DFT-D3 dispersion model
+Version: 1.2.1
+Libs: -L${libdir} -ls-dftd3
+Cflags: -I${includedir} -I${includedir}/s-dftd3/GNU-10.2.1
