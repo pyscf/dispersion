@@ -1,9 +1,0 @@
-prefix=/mlx_devbox/users/xiaojie.wu/playground/dispersion/pyscf/lib/deps
-libdir=${prefix}//mlx_devbox/users/xiaojie.wu/playground/dispersion/pyscf/lib
-includedir=${prefix}/include
-
-Name: dftd4
-Description: Generally Applicable Atomic-Charge Dependent London Dispersion Correction
-Version: 3.7.0
-Libs: -L${libdir} -ldftd4
-Cflags: -I${includedir} -I${includedir}/dftd4/GNU-10.2.1
