@@ -23,4 +23,5 @@ jobs:
       - name: Test
         run: |
             export PYSCF_EXT_PATH=$(pwd):$PYSCF_EXT_PATH
+            export PYTHONPATH="${PYTHONPATH}:$(pwd)"
             pytest -s pyscf/dispersion
