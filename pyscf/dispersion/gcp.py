@@ -17,47 +17,26 @@ import os
 import numpy as np
 import ctypes
 from pyscf import lib, gto
-
-libdftd3 = lib.load_library('libs-dftd3')
-
-_load_damping_param = {
-    "d3bj":   libdftd3.dftd3_load_rational_damping,      #RationalDampingParam,
-    "d3zero": libdftd3.dftd3_load_zero_damping,          #ZeroDampingParam,
-    "d3bjm":  libdftd3.dftd3_load_mrational_damping,     #ModifiedRationalDampingParam,
-    "d3mbj":  libdftd3.dftd3_load_mrational_damping,     #ModifiedRationalDampingParam,
-    "d3zerom":libdftd3.dftd3_load_mzero_damping,         #ModifiedZeroDampingParam,
-    "d3mzero":libdftd3.dftd3_load_mzero_damping,         #ModifiedZeroDampingParam,
-    "d3op":   libdftd3.dftd3_load_optimizedpower_damping #OptimizedPowerDampingParam,
-}
-
-class _d3_restype(ctypes.Structure):
-    pass
-
-_d3_p = ctypes.POINTER(_d3_restype)
+from pyscf.dispersion.dftd3 import libdftd3, _d3_p, error_check
 
 libdftd3.dftd3_new_error.restype                   = _d3_p
 libdftd3.dftd3_new_structure.restype               = _d3_p
-libdftd3.dftd3_load_optimizedpower_damping.restype = _d3_p
-libdftd3.dftd3_load_mzero_damping.restype          = _d3_p
-libdftd3.dftd3_load_mrational_damping.restype      = _d3_p
-libdftd3.dftd3_load_zero_damping.restype           = _d3_p
-libdftd3.dftd3_load_rational_damping.restype       = _d3_p
-libdftd3.dftd3_new_d3_model.restype                = _d3_p
+libdftd3.dftd3_load_gcp_param.restype              = _d3_p
 libdftd3.dftd3_check_error.restype                 = ctypes.c_int
 
-def error_check(err):
-    if libdftd3.dftd3_check_error(err):
-        size = ctypes.c_int(2048)
-        message = ctypes.create_string_buffer(2048)
-        libdftd3.dftd3_get_error(err, message, ctypes.byref(size))
-        raise RuntimeError(message.value.decode())
+# Somehow, GCP does not check the error for default method or basis
+_white_list = {
+    'b973c',
+    'r2scan3c',
+    'wb97x3c'
+}
 
-class DFTD3Dispersion(lib.StreamObject):
-    def __init__(self, mol, xc, version='d3bj', atm=False):
-        xc_lc = xc.lower().replace('-', '').replace('_', '').encode()
-        self._disp = None
+class GCP(lib.StreamObject):
+    def __init__(self, mol, method=None, basis=None):
+        self._gcp = None
         self._mol = None
-        self._param = None
+        if method is not None and method.lower() not in _white_list:
+            raise RuntimeError()
 
         coords = np.asarray(mol.atom_coords(), dtype=np.double, order='C')
         nuc_types = [gto.charge(mol.atom_symbol(ia))
@@ -82,29 +61,33 @@ class DFTD3Dispersion(lib.StreamObject):
         )
         error_check(err)
 
-        self._disp = libdftd3.dftd3_new_d3_model(err, self._mol)
-        error_check(err)
-
-        self._param = _load_damping_param[version](
-            err,
-            xc_lc,
-            ctypes.c_bool(atm))
+        method_ptr = lib.c_null_ptr()
+        basis_ptr = lib.c_null_ptr()
+        if method is not None:
+            method_ptr = method.encode()
+        if basis is not None:
+            basis_ptr = basis.encode()
+        
+        self._gcp = libdftd3.dftd3_load_gcp_param(
+            err, 
+            self._mol, 
+            method_ptr, 
+            basis_ptr)
         error_check(err)
         libdftd3.dftd3_delete_error(ctypes.byref(err))
         
     def __del__(self):
         err = libdftd3.dftd3_new_error()
-        if self._param:
-            libdftd3.dftd3_delete_param(ctypes.byref(self._param))
-        if self._disp:
-            libdftd3.dftd3_delete_model(err, ctypes.byref(self._disp))
+        if self._gcp:
+            libdftd3.dftd3_delete_gcp(err, ctypes.byref(self._gcp))
         if self._mol:
             libdftd3.dftd3_delete_structure(err, ctypes.byref(self._mol))
         libdftd3.dftd3_delete_error(ctypes.byref(err))
 
-    def get_dispersion(self, grad=False):
+    def get_counterpoise(self, grad=False):
         res = {}
         _energy = np.array(0.0, dtype=np.double)
+        _energy_str = _energy.ctypes.data_as(ctypes.c_void_p)
         if grad:
             _gradient = np.zeros((self.natm,3))
             _sigma = np.zeros((3,3))
@@ -117,12 +100,11 @@ class DFTD3Dispersion(lib.StreamObject):
             _sigma_str = lib.c_null_ptr()
 
         err = libdftd3.dftd3_new_error()
-        libdftd3.dftd3_get_dispersion(
+        libdftd3.dftd3_get_counterpoise(
             err,
             self._mol,
-            self._disp,
-            self._param,
-            _energy.ctypes.data_as(ctypes.c_void_p),
+            self._gcp,
+            _energy_str,
             _gradient_str,
             _sigma_str)
         error_check(err)
