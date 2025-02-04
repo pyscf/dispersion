@@ -109,6 +109,8 @@ except ImportError:
 
 setup(
     version=VERSION,
+    license='Apache-2.0',
+    license_files=['LICENSE'],
     include_package_data=True,
     packages=modules + ['pyscf.lib'],
     cmdclass={'build_py': CMakeBuildPy},
