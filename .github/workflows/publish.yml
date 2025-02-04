@@ -27,7 +27,7 @@ jobs:
         ls ${{ github.workspace }}/linux-wheels
     - name: Publish to PyPI
       run: |
-          pip3 install twine=6.0.1
+          pip3 install twine==6.0.1
           export TWINE_USERNAME=__token__
           export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
           twine upload --verbose ${{ github.workspace }}/linux-wheels/*
@@ -59,7 +59,7 @@ jobs:
         ls ${{ github.workspace }}/linux-wheels
     - name: Publish to PyPI
       run: |
-          pip3 install twine=6.0.1
+          pip3 install twine==6.0.1
           export TWINE_USERNAME=__token__
           export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
           twine upload --verbose ${{ github.workspace }}/linux-wheels/*
