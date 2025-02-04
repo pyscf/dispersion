@@ -27,7 +27,7 @@ jobs:
         ls ${{ github.workspace }}/linux-wheels
     - name: Publish to PyPI
       run: |
-          pip3 install twine
+          pip3 install twine=6.0.1
           export TWINE_USERNAME=__token__
           export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
           twine upload --verbose ${{ github.workspace }}/linux-wheels/*
@@ -59,14 +59,14 @@ jobs:
         ls ${{ github.workspace }}/linux-wheels
     - name: Publish to PyPI
       run: |
-          pip3 install twine
+          pip3 install twine=6.0.1
           export TWINE_USERNAME=__token__
           export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
           twine upload --verbose ${{ github.workspace }}/linux-wheels/*
 
   release-pypi-macos-x86:
     name: Build wheels for macos
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
     - uses: fortran-lang/setup-fortran@v1
       with:
@@ -82,7 +82,7 @@ jobs:
         output-dir: mac-wheels
     - name: Publish to PyPI
       run: |
-          pip3 install twine
+          pip3 install twine==6.0.1
           export TWINE_USERNAME=__token__
           export TWINE_PASSWORD="${{ secrets.PYPI_API_TOKEN }}"
           twine upload --verbose mac-wheels/*
