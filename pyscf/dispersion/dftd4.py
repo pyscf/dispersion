@@ -28,7 +28,9 @@ _d4_p = ctypes.POINTER(_d4_restype)
 libdftd4.dftd4_new_error.restype             = _d4_p
 libdftd4.dftd4_new_structure.restype         = _d4_p
 libdftd4.dftd4_new_d4_model.restype          = _d4_p
+libdftd4.dftd4_new_d4s_model.restype         = _d4_p
 libdftd4.dftd4_custom_d4_model.restype       = _d4_p
+libdftd4.dftd4_custom_d4s_model.restype       = _d4_p
 libdftd4.dftd4_load_rational_damping.restype = _d4_p
 libdftd4.dftd4_new_rational_damping.restype  = _d4_p
 
@@ -40,7 +42,7 @@ def error_check(err):
         raise RuntimeError(message.value.decode())
 
 class DFTD4Dispersion(lib.StreamObject):
-    def __init__(self, mol, xc, ga=None, gc=None, wf=None, atm=False):
+    def __init__(self, mol, xc, version='d4', ga=None, gc=None, wf=None, atm=False):
         xc_lc = xc.lower().encode()
         self._disp = None
         self._mol = None
@@ -71,20 +73,27 @@ class DFTD4Dispersion(lib.StreamObject):
             lattice, periodic,
         )
         error_check(err)
-        if ga is None and gc is None and wf is None:
-            self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
-        else:
-            # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
-            if ga is None:
-                ga = 3.0
-            if gc is None:
-                gc = 2.0
-            if wf is None:
-                wf = 6.0
-            self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol, 
-                                                        ctypes.c_double(ga), 
-                                                        ctypes.c_double(gc), 
-                                                        ctypes.c_double(wf))
+        if version.lower()[:2] == 'd4':
+            if ga is None and gc is None and wf is None:
+                self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+            else:
+                # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
+                if ga is None: ga = 3.0
+                if gc is None: gc = 2.0
+                if wf is None: wf = 6.0
+                self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol, 
+                                                            ctypes.c_double(ga), 
+                                                            ctypes.c_double(gc), 
+                                                            ctypes.c_double(wf))
+        elif version.lower()[:2] == 'd4s':
+            if ga is None and gc is None:
+                self._disp = libdftd4.dftd4_new_d4s_model(err, self._mol)
+            else:
+                if ga is None: ga = 3.0
+                if gc is None: gc = 2.0
+                self._disp = libdftd4.dftd4_custom_d4s_model(err, self._mol, 
+                                                ctypes.c_double(ga), 
+                                                ctypes.c_double(gc))
         error_check(err)
         self._param = libdftd4.dftd4_load_rational_damping(
             err,

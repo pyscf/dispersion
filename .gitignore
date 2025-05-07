@@ -62,8 +62,12 @@ Makefile
 cmake_install.cmake
 pyscf/lib/deps
 pyscf/lib/config.h
-
+pyscf/lib/cmake/
+pyscf/lib/pkgconfig/
+pyscf/lib/libdftd4.*
+pyscf/lib/libs-dftd3.*
 settings.py
+*.cmake
 
 # Memoization and caching
 tmp/
