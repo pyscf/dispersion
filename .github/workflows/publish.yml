@@ -18,7 +18,8 @@ jobs:
       run: |
           docker run --rm -v ${{ github.workspace }}:/src:rw --workdir=/src \
           pyscf/pyscf-pypa-env:latest \
-          bash -exc '/opt/python/cp39-cp39/bin/pip wheel -v --no-deps --no-clean -w /root/wheelhouse /src && \
+          bash -exc '/opt/python/cp39-cp39/bin/pip install cmake && \
+          /opt/python/cp39-cp39/bin/pip wheel -v --no-deps --no-clean -w /root/wheelhouse /src && \
           ls /root/wheelhouse && \
           whl=`ls /root/wheelhouse/pyscf*_x86_64.whl` && \
           auditwheel -v repair "$whl" -w /src/linux-wheels'
@@ -50,6 +51,7 @@ jobs:
             yum install -y epel-release && \
             yum-config-manager --enable epel && \
             yum install -y openblas-devel gcc && \
+            /opt/python/cp39-cp39/bin/pip install cmake && \
             /opt/python/cp39-cp39/bin/pip wheel -v --no-deps --no-clean -w /root/wheelhouse /src && \
             ls /root/wheelhouse && \
             whl=`ls /root/wheelhouse/pyscf*-linux_*.whl` && \

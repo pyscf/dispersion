@@ -18,6 +18,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: |
+            apt-get install libopenblas-dev
             pip install .
             pip install pytest
       - name: Test
