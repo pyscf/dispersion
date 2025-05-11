@@ -53,7 +53,7 @@ class DFTD4Dispersion(lib.StreamObject):
         nuc_types = [gto.charge(mol.atom_symbol(ia))
                      for ia in range(mol.natm)]
         nuc_types = np.asarray(nuc_types, dtype=np.int32)
-        
+
         self.natm = mol.natm
         if isinstance(mol, gto.Mole):
             lattice = lib.c_null_ptr()
@@ -73,7 +73,7 @@ class DFTD4Dispersion(lib.StreamObject):
             lattice, periodic,
         )
         error_check(err)
-        if version.lower()[:2] == 'd4':
+        if version.lower() == 'd4':
             if ga is None and gc is None and wf is None:
                 self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
             else:
@@ -81,19 +81,21 @@ class DFTD4Dispersion(lib.StreamObject):
                 if ga is None: ga = 3.0
                 if gc is None: gc = 2.0
                 if wf is None: wf = 6.0
-                self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol, 
-                                                            ctypes.c_double(ga), 
-                                                            ctypes.c_double(gc), 
+                self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol,
+                                                            ctypes.c_double(ga),
+                                                            ctypes.c_double(gc),
                                                             ctypes.c_double(wf))
-        elif version.lower()[:2] == 'd4s':
+        elif version.lower() == 'd4s':
             if ga is None and gc is None:
                 self._disp = libdftd4.dftd4_new_d4s_model(err, self._mol)
             else:
                 if ga is None: ga = 3.0
                 if gc is None: gc = 2.0
-                self._disp = libdftd4.dftd4_custom_d4s_model(err, self._mol, 
-                                                ctypes.c_double(ga), 
+                self._disp = libdftd4.dftd4_custom_d4s_model(err, self._mol,
+                                                ctypes.c_double(ga),
                                                 ctypes.c_double(gc))
+        else:
+            raise ValueError('version must be d4 or d4s')
         error_check(err)
         self._param = libdftd4.dftd4_load_rational_damping(
             err,
@@ -116,10 +118,10 @@ class DFTD4Dispersion(lib.StreamObject):
     def set_param(self, s8, a1, a2, s6=1.0, s9=1.0, alp=16.0):
         self._param = libdftd4.dftd4_new_rational_damping(
             ctypes.c_double(s6),
-            ctypes.c_double(s8), 
-            ctypes.c_double(s9), 
-            ctypes.c_double(a1), 
-            ctypes.c_double(a2), 
+            ctypes.c_double(s8),
+            ctypes.c_double(s9),
+            ctypes.c_double(a1),
+            ctypes.c_double(a2),
             ctypes.c_double(alp))
         return
 
