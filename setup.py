@@ -74,7 +74,7 @@ class CMakeBuildPy(build_py):
         self.announce('Building binaries', level=3)
         # Do not use high level parallel compilation. OOM may be triggered
         # when compiling certain functionals in libxc.
-        cmd = ['cmake', '--build', self.build_temp, '-j', '4']
+        cmd = ['cmake', '--build', self.build_temp, '-j', '1']
         build_args = os.getenv('CMAKE_BUILD_ARGS')
         if build_args:
             cmd.extend(build_args.split(' '))
@@ -109,6 +109,8 @@ except ImportError:
 
 setup(
     version=VERSION,
+    license='Apache-2.0',
+    license_files=['LICENSE'],
     include_package_data=True,
     packages=modules + ['pyscf.lib'],
     cmdclass={'build_py': CMakeBuildPy},
