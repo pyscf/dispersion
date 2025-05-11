@@ -46,7 +46,7 @@ add_dependencies(dftd3 dftd3_static)
 # statically compile deps mctc mstore
 ExternalProject_Add(dftd4_static
   GIT_REPOSITORY "https://github.com/dftd4/dftd4"
-  GIT_TAG v3.7.0
+  GIT_TAG 29b52463fb6befeb81db65bdfbf5f5439a8c6a9c
   GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
   PREFIX ${PROJECT_BINARY_DIR}/deps
@@ -57,7 +57,7 @@ ExternalProject_Add(dftd4_static
 )
 ExternalProject_Add(dftd4
   GIT_REPOSITORY "https://github.com/dftd4/dftd4"
-  GIT_TAG v3.7.0
+  GIT_TAG 29b52463fb6befeb81db65bdfbf5f5439a8c6a9c
   GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
   PREFIX ${PROJECT_BINARY_DIR}/deps
