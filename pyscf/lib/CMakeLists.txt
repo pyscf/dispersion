@@ -15,6 +15,8 @@
 cmake_minimum_required (VERSION 3.5)
 project (pyscf-dispersion)
 
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -ffree-line-length-none -Wall")
+
 include(ExternalProject)
 # statically compile deps mctc mstore
 ExternalProject_Add(dftd3_static
@@ -52,6 +54,7 @@ ExternalProject_Add(dftd4_static
   PREFIX ${PROJECT_BINARY_DIR}/deps
   INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
   CMAKE_ARGS -DWITH_OpenMP=OFF
+          -DCMAKE_Fortran_FLAGS=-cpp\ -ffree-line-length-none\ -Wall
           -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
           -DCMAKE_INSTALL_LIBDIR:PATH=lib
 )
@@ -63,6 +66,7 @@ ExternalProject_Add(dftd4
   PREFIX ${PROJECT_BINARY_DIR}/deps
   INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
   CMAKE_ARGS -DWITH_OpenMP=OFF -DBUILD_SHARED_LIBS=ON
+          -DCMAKE_Fortran_FLAGS=-cpp\ -ffree-line-length-none\ -Wall
           -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
           -DCMAKE_INSTALL_LIBDIR:PATH=${PROJECT_SOURCE_DIR}
 )

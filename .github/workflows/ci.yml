@@ -18,10 +18,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: |
-            sudo apt-get install -y libopenblas-dev
-            pip install .
-            pip install pytest
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo update-alternatives \
+          --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 \
+          --slave /usr/bin/gfortran gfortran /usr/bin/gfortran-12 \
+          --slave /usr/bin/gcov gcov /usr/bin/gcov-12
+          sudo apt-get install -y libopenblas-dev
+          pip install .
+          pip install pytest
       - name: Test
         run: |
-            export PYSCF_EXT_PATH=$(pwd):$PYSCF_EXT_PATH
-            pytest -s pyscf/dispersion
+          export PYSCF_EXT_PATH=$(pwd):$PYSCF_EXT_PATH
+          pytest -s pyscf/dispersion
