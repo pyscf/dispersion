@@ -117,4 +117,4 @@ def test_d4s_gradient():
 
     model = DFTD4Dispersion(mol, xc="BLYP", version="d4s")
     out = model.get_dispersion()
-    assert np.linalg.norm(out['energy'] - ref) < 1.0e-7
+    assert np.linalg.norm(out['gradient'] - ref) < 1.0e-7
