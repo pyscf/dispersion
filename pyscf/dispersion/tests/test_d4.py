@@ -29,6 +29,13 @@ def test_d4_energy():
     out = model.get_dispersion()
     assert abs(out['energy'] - -2.21334459527e-05) < 1e-10
 
+def test_wb97x_d4_energy():
+    mol = pyscf.M(atom='H 0 0 0; H 0 0 1')
+    model = DFTD4Dispersion(mol, xc='WB97X')
+    out = model.get_dispersion()
+    print(out)
+    #assert abs(out['energy'] - -2.21334459527e-05) < 1e-10
+
 def test_d4_gradients():
     mol = pyscf.M(atom='H 0 0 0; H 0 0 1')
     model = DFTD4Dispersion(mol, xc='HF')
