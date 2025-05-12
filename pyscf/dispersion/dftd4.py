@@ -28,7 +28,9 @@ _d4_p = ctypes.POINTER(_d4_restype)
 libdftd4.dftd4_new_error.restype             = _d4_p
 libdftd4.dftd4_new_structure.restype         = _d4_p
 libdftd4.dftd4_new_d4_model.restype          = _d4_p
+libdftd4.dftd4_new_d4s_model.restype         = _d4_p
 libdftd4.dftd4_custom_d4_model.restype       = _d4_p
+libdftd4.dftd4_custom_d4s_model.restype       = _d4_p
 libdftd4.dftd4_load_rational_damping.restype = _d4_p
 libdftd4.dftd4_new_rational_damping.restype  = _d4_p
 
@@ -40,18 +42,22 @@ def error_check(err):
         raise RuntimeError(message.value.decode())
 
 class DFTD4Dispersion(lib.StreamObject):
-    def __init__(self, mol, xc, ga=None, gc=None, wf=None, atm=False):
+    def __init__(self, mol, xc, version='d4', ga=None, gc=None, wf=None, atm=False):
         xc_lc = xc.lower().encode()
         self._disp = None
         self._mol = None
         self._param = None
 
+        log = lib.logger.new_logger(mol)
+        # https://github.com/dftd4/dftd4/pull/276
+        if xc_lc == 'wb97x':
+            log.warn('The previous wb97x is renamed as wb97x-2008. Now D4 dispersion for wb97x is the replacement of vv10 in wb97x-v. See https://github.com/dftd4/dftd4/blob/main/README.md')
         coords = np.asarray(mol.atom_coords(), dtype=np.double, order='C')
         charge = np.array([mol.charge], dtype=np.double)
         nuc_types = [gto.charge(mol.atom_symbol(ia))
                      for ia in range(mol.natm)]
         nuc_types = np.asarray(nuc_types, dtype=np.int32)
-        
+
         self.natm = mol.natm
         if isinstance(mol, gto.Mole):
             lattice = lib.c_null_ptr()
@@ -71,20 +77,29 @@ class DFTD4Dispersion(lib.StreamObject):
             lattice, periodic,
         )
         error_check(err)
-        if ga is None and gc is None and wf is None:
-            self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+        if version.lower() == 'd4':
+            if ga is None and gc is None and wf is None:
+                self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+            else:
+                # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
+                if ga is None: ga = 3.0
+                if gc is None: gc = 2.0
+                if wf is None: wf = 6.0
+                self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol,
+                                                            ctypes.c_double(ga),
+                                                            ctypes.c_double(gc),
+                                                            ctypes.c_double(wf))
+        elif version.lower() == 'd4s':
+            if ga is None and gc is None:
+                self._disp = libdftd4.dftd4_new_d4s_model(err, self._mol)
+            else:
+                if ga is None: ga = 3.0
+                if gc is None: gc = 2.0
+                self._disp = libdftd4.dftd4_custom_d4s_model(err, self._mol,
+                                                ctypes.c_double(ga),
+                                                ctypes.c_double(gc))
         else:
-            # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
-            if ga is None:
-                ga = 3.0
-            if gc is None:
-                gc = 2.0
-            if wf is None:
-                wf = 6.0
-            self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol, 
-                                                        ctypes.c_double(ga), 
-                                                        ctypes.c_double(gc), 
-                                                        ctypes.c_double(wf))
+            raise ValueError('version must be d4 or d4s')
         error_check(err)
         self._param = libdftd4.dftd4_load_rational_damping(
             err,
@@ -107,10 +122,10 @@ class DFTD4Dispersion(lib.StreamObject):
     def set_param(self, s8, a1, a2, s6=1.0, s9=1.0, alp=16.0):
         self._param = libdftd4.dftd4_new_rational_damping(
             ctypes.c_double(s6),
-            ctypes.c_double(s8), 
-            ctypes.c_double(s9), 
-            ctypes.c_double(a1), 
-            ctypes.c_double(a2), 
+            ctypes.c_double(s8),
+            ctypes.c_double(s9),
+            ctypes.c_double(a1),
+            ctypes.c_double(a2),
             ctypes.c_double(alp))
         return
 
