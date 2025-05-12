@@ -49,10 +49,6 @@ class DFTD4Dispersion(lib.StreamObject):
         self._param = None
 
         log = lib.logger.new_logger(mol)
-        import pyscf
-        from packaging import version
-        if version.parse(pyscf.__version__) <= version.parse('2.9.0'):
-
         # https://github.com/dftd4/dftd4/pull/276
         if xc_lc == 'wb97x':
             log.warn('The previous wb97x is renamed as wb97x-2008. \
