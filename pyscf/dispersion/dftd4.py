@@ -48,6 +48,10 @@ class DFTD4Dispersion(lib.StreamObject):
         self._mol = None
         self._param = None
 
+        log = lib.logger.new_logger(mol)
+        # https://github.com/dftd4/dftd4/pull/276
+        if xc_lc == 'wb97x':
+            log.warn('The previous wb97x is renamed as wb97x-2008. Now D4 dispersion for wb97x is the replacement of vv10 in wb97x-v. See https://github.com/dftd4/dftd4/blob/main/README.md')
         coords = np.asarray(mol.atom_coords(), dtype=np.double, order='C')
         charge = np.array([mol.charge], dtype=np.double)
         nuc_types = [gto.charge(mol.atom_symbol(ia))
