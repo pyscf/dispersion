@@ -17,6 +17,9 @@ import os
 import numpy as np
 import ctypes
 from pyscf import lib, gto
+from pyscf import __config__
+
+WB97X_2008 = getattr(__config__, 'DFTD4_WB97X_USE_2008', True)
 
 libdftd4 = lib.load_library('libdftd4')
 
@@ -50,11 +53,15 @@ class DFTD4Dispersion(lib.StreamObject):
 
         log = lib.logger.new_logger(mol)
         # https://github.com/dftd4/dftd4/pull/276
-        if xc_lc == 'wb97x':
-            log.warn('The previous wb97x is renamed as wb97x-2008. \
-                     Since pyscf-dispersion v1.4, D4 dispersion for wb97x is \
-                     the replacement of vv10 in wb97x-v.  \
-                     See https://github.com/dftd4/dftd4/blob/main/README.md')
+        if xc_lc == 'wb97x' and not self._wb97x_warned:
+            log.warn('A bug in the WB97X has been fixed in DFTD4 '
+                     '(https://github.com/dftd4/dftd4/pull/276). For backward '
+                     'compatibility, PySCF continues to use the legacy WB97X by '
+                     'default. To use the corrected WB97X-D4 parameterization, set\n'
+                     '    "DFTD4_WB97X_USE_2008 = False" in your ~/pyscf_conf.py.')
+            self._wb97x_warned = True
+        if WB97X_2008:
+            xc_lc = 'wb97x-2008'
         
         coords = np.asarray(mol.atom_coords(), dtype=np.double, order='C')
         charge = np.array([mol.charge], dtype=np.double)
