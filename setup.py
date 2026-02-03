@@ -108,6 +108,7 @@ except ImportError:
     pass
 
 setup(
+    name='pyscf-dispersion',
     version=VERSION,
     license='Apache-2.0',
     license_files=['LICENSE'],
