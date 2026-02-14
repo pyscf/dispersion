@@ -68,12 +68,12 @@ jobs:
 
   release-pypi-macos-x86:
     name: Build wheels for macos
-    runs-on: macos-13
+    runs-on: macos-15-intel
     steps:
     - uses: fortran-lang/setup-fortran@v1
       with:
         compiler: gcc
-        version: 13
+        version: latest
     - uses: actions/checkout@v4
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.21.0
@@ -96,7 +96,7 @@ jobs:
     - uses: fortran-lang/setup-fortran@v1
       with:
         compiler: gcc
-        version: 13
+        version: latest
     - uses: actions/checkout@v4
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.21.0
