@@ -159,3 +159,60 @@ def test_gradient_tpss_d4_charge():
 
     out = model.get_dispersion(grad=True)
     assert np.linalg.norm(out['gradient'] - ref) < 1.0e-7
+
+
+@pytest.mark.parametrize('distance,ref,switch', [
+    (3.0, -0.00018238733798327627, 1.0),
+    (4.0, -0.00017311086359280502, 0.5),
+    (4.5, -0.0001623051934246008, 0.103515625),
+    (5.0, -0.00014578629180959712, 0.0),
+    (6.0, -9.945813723253093e-05, 0.0),
+])
+def test_d4_cutoff(distance, ref, switch):
+    # Energies from dftd4 4.3.1 CLI: --func pbe, H2 coordinates in Bohr.
+    mol = pyscf.M(atom=[('H', (0, 0, 0)), ('H', (0, 0, distance))], unit='Bohr')
+    model = DFTD4Dispersion(mol, 'PBE')
+    assert abs(model.get_dispersion()['energy'] - ref) < 1e-12
+    model.set_realspace_cutoff(3, 3, 10, width2=1, width3=1)
+    out = model.get_dispersion(grad=True)
+    for value in out.values():
+        assert abs(value).max() < 1e-15
+    model.set_realspace_cutoff(5, 5, 10, width2=2, width3=2)
+    # S(x) = 10*x**3 - 15*x**4 + 6*x**5, x = (5-distance)/2, clipped to [0,1].
+    assert abs(model.get_dispersion()['energy'] - switch*ref) < 1e-12
+    coords = mol.atom_coords()
+    energies = []
+    for shift in [-1e-6, 1e-6]:
+        displaced = coords.copy()
+        displaced[1,2] += shift
+        other = DFTD4Dispersion(mol.set_geom_(displaced, unit='Bohr', inplace=False), 'PBE')
+        other.set_realspace_cutoff(5, 5, 10, width2=2, width3=2)
+        energies.append(other.get_dispersion()['energy'])
+    grad = model.get_dispersion(grad=True)['gradient'][1,2]
+    assert abs(grad - (energies[1]-energies[0])/2e-6) < 1e-7
+
+
+@pytest.mark.parametrize('dimension', [0, 1, 2, 3])
+def test_d4_periodic_flags(dimension):
+    mol = pyscf.M(atom='H 0 0 0; H 0 0 1', a=np.eye(3)*4, dimension=dimension,
+                  low_dim_ft_type='inf_vacuum')
+    model = DFTD4Dispersion(mol, 'PBE')
+    ref = model.get_dispersion()['energy']
+    for axis in range(dimension):
+        coords = mol.atom_coords()
+        coords[1,axis] += mol.lattice_vectors()[axis,axis]
+        shifted = DFTD4Dispersion(mol.set_geom_(coords, unit='Bohr', inplace=False), 'PBE')
+        out = shifted.get_dispersion()['energy']
+        assert abs(out - ref) < 1e-10
+    if dimension == 0:
+        molecule = pyscf.M(atom=mol.atom, basis=mol.basis)
+        assert abs(ref - DFTD4Dispersion(molecule, 'PBE').get_dispersion()['energy']) < 1e-12
+
+
+def test_d4_delete():
+    mol = pyscf.M(atom='H 0 0 0; H 0 0 1')
+    model = DFTD4Dispersion(mol, 'PBE')
+    model.__del__()
+    assert not model._param
+    assert not model._disp
+    assert not model._mol

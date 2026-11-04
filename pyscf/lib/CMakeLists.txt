@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 3.22)
 project (pyscf-dispersion)
 
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp -ffree-line-length-none -Wall")
@@ -21,8 +21,8 @@ include(ExternalProject)
 # statically compile deps mctc mstore
 ExternalProject_Add(dftd3_static
   GIT_REPOSITORY "https://github.com/dftd3/simple-dftd3"
-  # version of Aug 25, 2025
-  GIT_TAG 86dcf336a14a8a06c27274a13b264026874daa4d
+  # DFT-D3 v1.7.0
+  GIT_TAG 84cb7cddd8d6669c4ecd59b06d53e0d373656239
   GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
   PREFIX ${PROJECT_BINARY_DIR}/deps
@@ -34,8 +34,8 @@ ExternalProject_Add(dftd3_static
 )
 ExternalProject_Add(dftd3
   GIT_REPOSITORY "https://github.com/dftd3/simple-dftd3"
-  # version of Aug 25, 2025
-  GIT_TAG 86dcf336a14a8a06c27274a13b264026874daa4d
+  # DFT-D3 v1.7.0
+  GIT_TAG 84cb7cddd8d6669c4ecd59b06d53e0d373656239
   GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
   PREFIX ${PROJECT_BINARY_DIR}/deps
@@ -50,8 +50,8 @@ add_dependencies(dftd3 dftd3_static)
 # statically compile deps mctc mstore
 ExternalProject_Add(dftd4_static
   GIT_REPOSITORY "https://github.com/dftd4/dftd4"
-  # version of Feb 4, 2026
-  GIT_TAG d6d4389f2a7728b1cd3cf1039167712ada19bbef
+  # DFT-D4 v4.3.1
+  GIT_TAG 1107ea7c7c2131719e306fd57a5f4a1579e2577e
   GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
   PREFIX ${PROJECT_BINARY_DIR}/deps
@@ -63,8 +63,8 @@ ExternalProject_Add(dftd4_static
 )
 ExternalProject_Add(dftd4
   GIT_REPOSITORY "https://github.com/dftd4/dftd4"
-  # version of Feb 4, 2026
-  GIT_TAG d6d4389f2a7728b1cd3cf1039167712ada19bbef
+  # DFT-D4 v4.3.1
+  GIT_TAG 1107ea7c7c2131719e306fd57a5f4a1579e2577e
   GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
   PREFIX ${PROJECT_BINARY_DIR}/deps

@@ -69,69 +69,107 @@ class DFTD4Dispersion(lib.StreamObject):
         else: # pbc.gto.Cell
             a = mol.lattice_vectors()
             lattice = a.ctypes
-            periodic = ctypes.byref(ctypes.c_bool(True))
+            periodic = (ctypes.c_bool*3)(*[i < mol.dimension for i in range(3)])
 
         err = libdftd4.dftd4_new_error()
-        self._mol = libdftd4.dftd4_new_structure(
-            err,
-            ctypes.c_int(mol.natm),
-            nuc_types.ctypes.data_as(ctypes.c_void_p),
-            coords.ctypes.data_as(ctypes.c_void_p),
-            charge.ctypes.data_as(ctypes.c_void_p),
-            lattice, periodic,
-        )
-        error_check(err)
-        if version.lower() == 'd4':
-            if ga is None and gc is None and wf is None:
-                self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+        try:
+            self._mol = libdftd4.dftd4_new_structure(
+                err,
+                ctypes.c_int(mol.natm),
+                nuc_types.ctypes.data_as(ctypes.c_void_p),
+                coords.ctypes.data_as(ctypes.c_void_p),
+                charge.ctypes.data_as(ctypes.c_void_p),
+                lattice, periodic,
+            )
+            error_check(err)
+            if version.lower() == 'd4':
+                if ga is None and gc is None and wf is None:
+                    self._disp = libdftd4.dftd4_new_d4_model(err, self._mol)
+                else:
+                    # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
+                    if ga is None: ga = 3.0
+                    if gc is None: gc = 2.0
+                    if wf is None: wf = 6.0
+                    self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol,
+                                                                ctypes.c_double(ga),
+                                                                ctypes.c_double(gc),
+                                                                ctypes.c_double(wf))
+            elif version.lower() == 'd4s':
+                if ga is None and gc is None:
+                    self._disp = libdftd4.dftd4_new_d4s_model(err, self._mol)
+                else:
+                    if ga is None: ga = 3.0
+                    if gc is None: gc = 2.0
+                    self._disp = libdftd4.dftd4_custom_d4s_model(err, self._mol,
+                                                    ctypes.c_double(ga),
+                                                    ctypes.c_double(gc))
             else:
-                # Default from DFTD4 repo, https://github.com/dftd4/dftd4/blob/main/python/dftd4/interface.py#L290
-                if ga is None: ga = 3.0
-                if gc is None: gc = 2.0
-                if wf is None: wf = 6.0
-                self._disp = libdftd4.dftd4_custom_d4_model(err, self._mol,
-                                                            ctypes.c_double(ga),
-                                                            ctypes.c_double(gc),
-                                                            ctypes.c_double(wf))
-        elif version.lower() == 'd4s':
-            if ga is None and gc is None:
-                self._disp = libdftd4.dftd4_new_d4s_model(err, self._mol)
-            else:
-                if ga is None: ga = 3.0
-                if gc is None: gc = 2.0
-                self._disp = libdftd4.dftd4_custom_d4s_model(err, self._mol,
-                                                ctypes.c_double(ga),
-                                                ctypes.c_double(gc))
-        else:
-            raise ValueError('version must be d4 or d4s')
-        error_check(err)
-        self._param = libdftd4.dftd4_load_rational_damping(
-            err,
-            xc_lc,
-            ctypes.c_bool(atm))
-        error_check(err)
-
-        libdftd4.dftd4_delete_error(ctypes.byref(err))
+                raise ValueError('version must be d4 or d4s')
+            error_check(err)
+            self._param = libdftd4.dftd4_load_rational_damping(
+                err,
+                xc_lc,
+                ctypes.c_bool(atm))
+            error_check(err)
+        finally:
+            libdftd4.dftd4_delete_error(ctypes.byref(err))
 
     def __del__(self):
-        err = libdftd4.dftd4_new_error()
         if self._param:
             libdftd4.dftd4_delete_param(ctypes.byref(self._param))
         if self._mol:
-            libdftd4.dftd4_delete_structure(err, ctypes.byref(self._mol))
+            libdftd4.dftd4_delete_structure(ctypes.byref(self._mol))
         if self._disp:
-            libdftd4.dftd4_delete_model(err, ctypes.byref(self._disp))
-        libdftd4.dftd4_delete_error(ctypes.byref(err))
+            libdftd4.dftd4_delete_model(ctypes.byref(self._disp))
 
     def set_param(self, s8, a1, a2, s6=1.0, s9=1.0, alp=16.0):
-        self._param = libdftd4.dftd4_new_rational_damping(
-            ctypes.c_double(s6),
-            ctypes.c_double(s8),
-            ctypes.c_double(s9),
-            ctypes.c_double(a1),
-            ctypes.c_double(a2),
-            ctypes.c_double(alp))
+        err = libdftd4.dftd4_new_error()
+        try:
+            param = libdftd4.dftd4_new_rational_damping(
+                err,
+                ctypes.c_double(s6),
+                ctypes.c_double(s8),
+                ctypes.c_double(s9),
+                ctypes.c_double(a1),
+                ctypes.c_double(a2),
+                ctypes.c_double(alp))
+            error_check(err)
+        finally:
+            libdftd4.dftd4_delete_error(ctypes.byref(err))
+        libdftd4.dftd4_delete_param(ctypes.byref(self._param))
+        self._param = param
         return
+
+    def set_realspace_cutoff(self, disp2, disp3, cn, width2=0.0, width3=0.0):
+        '''Set realspace cutoffs and smoothing widths in Bohr.
+
+        Args:
+            disp2 : float
+                Cutoff radius for two-body dispersion interactions.
+            disp3 : float
+                Cutoff radius for three-body Axilrod-Teller-Muto interactions.
+            cn : float
+                Cutoff radius for evaluating coordination numbers.
+            width2, width3 : float, optional
+                Smoothing widths for the two-body and three-body cutoffs,
+                respectively. Positive widths are capped at the corresponding
+                cutoff. The switching function decreases from one to zero
+                between cutoff-width and cutoff. Non-positive widths disable
+                smoothing. The default is 0.0.
+        '''
+        err = libdftd4.dftd4_new_error()
+        try:
+            libdftd4.dftd4_set_model_realspace_cutoff_smooth(
+                err,
+                self._disp,
+                ctypes.c_double(disp2),
+                ctypes.c_double(disp3),
+                ctypes.c_double(cn),
+                ctypes.c_double(width2),
+                ctypes.c_double(width3))
+            error_check(err)
+        finally:
+            libdftd4.dftd4_delete_error(ctypes.byref(err))
 
     def get_dispersion(self, grad=False):
         res = {}
@@ -148,22 +186,23 @@ class DFTD4Dispersion(lib.StreamObject):
             _sigma_str = lib.c_null_ptr()
 
         err = libdftd4.dftd4_new_error()
-        libdftd4.dftd4_get_dispersion(
-            err,
-            self._mol,
-            self._disp,
-            self._param,
-            _energy.ctypes.data_as(ctypes.c_void_p),
-            _gradient_str,
-            _sigma_str)
-        error_check(err)
+        try:
+            libdftd4.dftd4_get_dispersion(
+                err,
+                self._mol,
+                self._disp,
+                self._param,
+                _energy.ctypes.data_as(ctypes.c_void_p),
+                _gradient_str,
+                _sigma_str)
+            error_check(err)
 
-        res = dict(energy=_energy)
-        if _gradient is not None:
-            res.update(gradient=_gradient)
-        if _sigma is not None:
-            res.update(virial=_sigma)
-
-        libdftd4.dftd4_delete_error(ctypes.byref(err))
+            res = dict(energy=_energy)
+            if _gradient is not None:
+                res.update(gradient=_gradient)
+            if _sigma is not None:
+                res.update(virial=_sigma)
+        finally:
+            libdftd4.dftd4_delete_error(ctypes.byref(err))
 
         return res

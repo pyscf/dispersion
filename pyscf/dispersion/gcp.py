@@ -49,40 +49,85 @@ class GCP(lib.StreamObject):
         else: # pbc.gto.Cell
             a = mol.lattice_vectors()
             lattice = a.ctypes
-            periodic = ctypes.byref(ctypes.c_bool(True))
+            periodic = (ctypes.c_bool*3)(*[i < mol.dimension for i in range(3)])
 
         err = libdftd3.dftd3_new_error()
-        self._mol = libdftd3.dftd3_new_structure(
-            err,
-            ctypes.c_int(mol.natm),
-            nuc_types.ctypes.data_as(ctypes.c_void_p),
-            coords.ctypes.data_as(ctypes.c_void_p),
-            lattice, periodic,
-        )
-        error_check(err)
+        try:
+            self._mol = libdftd3.dftd3_new_structure(
+                err,
+                ctypes.c_int(mol.natm),
+                nuc_types.ctypes.data_as(ctypes.c_void_p),
+                coords.ctypes.data_as(ctypes.c_void_p),
+                lattice, periodic,
+            )
+            error_check(err)
 
-        method_ptr = lib.c_null_ptr()
-        basis_ptr = lib.c_null_ptr()
-        if method is not None:
-            method_ptr = method.encode()
-        if basis is not None:
-            basis_ptr = basis.encode()
+            method_ptr = lib.c_null_ptr()
+            basis_ptr = lib.c_null_ptr()
+            if method is not None:
+                method_ptr = method.encode()
+            if basis is not None:
+                basis_ptr = basis.encode()
         
-        self._gcp = libdftd3.dftd3_load_gcp_param(
-            err, 
-            self._mol, 
-            method_ptr, 
-            basis_ptr)
-        error_check(err)
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+            self._gcp = libdftd3.dftd3_load_gcp_param(
+                err,
+                self._mol,
+                method_ptr,
+                basis_ptr)
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
         
     def __del__(self):
-        err = libdftd3.dftd3_new_error()
         if self._gcp:
-            libdftd3.dftd3_delete_gcp(err, ctypes.byref(self._gcp))
+            libdftd3.dftd3_delete_gcp(ctypes.byref(self._gcp))
         if self._mol:
-            libdftd3.dftd3_delete_structure(err, ctypes.byref(self._mol))
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+            libdftd3.dftd3_delete_structure(ctypes.byref(self._mol))
+
+    def set_realspace_cutoff(self, bas, srb):
+        '''Set realspace cutoffs for gCP and short-range corrections in Bohr.
+
+        Args:
+            bas : float
+                Cutoff radius for the geometric counterpoise correction to
+                basis-set superposition error.
+            srb : float
+                Cutoff radius for the short-range bond correction to basis-set
+                incompleteness, when included in the selected method.
+        '''
+        err = libdftd3.dftd3_new_error()
+        try:
+            libdftd3.dftd3_set_gcp_realspace_cutoff(
+                err,
+                self._gcp,
+                ctypes.c_double(bas),
+                ctypes.c_double(srb))
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
+
+    def get_hessian(self):
+        '''Return counterpoise energy and analytical Cartesian Hessian.
+
+        Returns:
+            A dict with keys 'energy' (scalar array in Hartree) and 'hessian'
+            ((3N,3N) array in Hartree/Bohr**2), where N is the number of atoms.
+            Both Hessian axes follow the order x1, y1, z1, x2, y2, z2, ...
+        '''
+        _energy = np.array(0.0, dtype=np.double)
+        _hessian = np.zeros((3*self.natm,3*self.natm))
+        err = libdftd3.dftd3_new_error()
+        try:
+            libdftd3.dftd3_get_counterpoise_hessian(
+                err,
+                self._mol,
+                self._gcp,
+                _energy.ctypes.data_as(ctypes.c_void_p),
+                _hessian.ctypes.data_as(ctypes.c_void_p))
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
+        return dict(energy=_energy, hessian=_hessian)
 
     def get_counterpoise(self, grad=False):
         res = {}
@@ -100,21 +145,22 @@ class GCP(lib.StreamObject):
             _sigma_str = lib.c_null_ptr()
 
         err = libdftd3.dftd3_new_error()
-        libdftd3.dftd3_get_counterpoise(
-            err,
-            self._mol,
-            self._gcp,
-            _energy_str,
-            _gradient_str,
-            _sigma_str)
-        error_check(err)
+        try:
+            libdftd3.dftd3_get_counterpoise(
+                err,
+                self._mol,
+                self._gcp,
+                _energy_str,
+                _gradient_str,
+                _sigma_str)
+            error_check(err)
 
-        res = dict(energy=_energy)
-        if _gradient is not None:
-            res.update(gradient=_gradient)
-        if _sigma is not None:
-            res.update(virial=_sigma)
-
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+            res = dict(energy=_energy)
+            if _gradient is not None:
+                res.update(gradient=_gradient)
+            if _sigma is not None:
+                res.update(virial=_sigma)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
 
         return res
