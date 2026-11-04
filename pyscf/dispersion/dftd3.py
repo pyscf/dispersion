@@ -27,6 +27,7 @@ _load_damping_param = {
     "d3mbj":  libdftd3.dftd3_load_mrational_damping,     #ModifiedRationalDampingParam,
     "d3zerom":libdftd3.dftd3_load_mzero_damping,         #ModifiedZeroDampingParam,
     "d3mzero":libdftd3.dftd3_load_mzero_damping,         #ModifiedZeroDampingParam,
+    "d3cso":  libdftd3.dftd3_load_cso_damping,           #CSODampingParam,
     "d3op":   libdftd3.dftd3_load_optimizedpower_damping #OptimizedPowerDampingParam,
 }
 
@@ -42,6 +43,7 @@ libdftd3.dftd3_load_mzero_damping.restype          = _d3_p
 libdftd3.dftd3_load_mrational_damping.restype      = _d3_p
 libdftd3.dftd3_load_zero_damping.restype           = _d3_p
 libdftd3.dftd3_load_rational_damping.restype       = _d3_p
+libdftd3.dftd3_load_cso_damping.restype            = _d3_p
 libdftd3.dftd3_new_d3_model.restype                = _d3_p
 libdftd3.dftd3_check_error.restype                 = ctypes.c_int
 
@@ -70,37 +72,90 @@ class DFTD3Dispersion(lib.StreamObject):
         else: # pbc.gto.Cell
             a = mol.lattice_vectors()
             lattice = a.ctypes
-            periodic = ctypes.byref(ctypes.c_bool(True))
+            periodic = (ctypes.c_bool*3)(*[i < mol.dimension for i in range(3)])
 
         err = libdftd3.dftd3_new_error()
-        self._mol = libdftd3.dftd3_new_structure(
-            err,
-            ctypes.c_int(mol.natm),
-            nuc_types.ctypes.data_as(ctypes.c_void_p),
-            coords.ctypes.data_as(ctypes.c_void_p),
-            lattice, periodic,
-        )
-        error_check(err)
+        try:
+            self._mol = libdftd3.dftd3_new_structure(
+                err,
+                ctypes.c_int(mol.natm),
+                nuc_types.ctypes.data_as(ctypes.c_void_p),
+                coords.ctypes.data_as(ctypes.c_void_p),
+                lattice, periodic,
+            )
+            error_check(err)
 
-        self._disp = libdftd3.dftd3_new_d3_model(err, self._mol)
-        error_check(err)
+            self._disp = libdftd3.dftd3_new_d3_model(err, self._mol)
+            error_check(err)
 
-        self._param = _load_damping_param[version](
-            err,
-            xc_lc,
-            ctypes.c_bool(atm))
-        error_check(err)
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+            self._param = _load_damping_param[version](
+                err,
+                xc_lc,
+                ctypes.c_bool(atm))
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
         
     def __del__(self):
-        err = libdftd3.dftd3_new_error()
         if self._param:
             libdftd3.dftd3_delete_param(ctypes.byref(self._param))
         if self._disp:
-            libdftd3.dftd3_delete_model(err, ctypes.byref(self._disp))
+            libdftd3.dftd3_delete_model(ctypes.byref(self._disp))
         if self._mol:
-            libdftd3.dftd3_delete_structure(err, ctypes.byref(self._mol))
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+            libdftd3.dftd3_delete_structure(ctypes.byref(self._mol))
+
+    def set_realspace_cutoff(self, disp2, disp3, cn, width2=0.0, width3=0.0):
+        '''Set realspace cutoffs and smoothing widths in Bohr.'''
+        err = libdftd3.dftd3_new_error()
+        try:
+            libdftd3.dftd3_set_model_realspace_cutoff_smooth(
+                err,
+                self._disp,
+                ctypes.c_double(disp2),
+                ctypes.c_double(disp3),
+                ctypes.c_double(cn),
+                ctypes.c_double(width2),
+                ctypes.c_double(width3))
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
+
+    def set_ewald_summation(self, rank=0, tolerance=0.0, kcut=0.0, mesh=0):
+        '''Enable Ewald summation for 3D PBC with BJ or zero damping.
+
+        mesh=0 selects an automatic particle mesh; mesh<0 uses a direct sum.
+        Non-positive rank, tolerance and kcut select upstream defaults.
+        '''
+        err = libdftd3.dftd3_new_error()
+        try:
+            libdftd3.dftd3_set_model_ewald(
+                err,
+                self._disp,
+                ctypes.c_int(rank),
+                ctypes.c_double(tolerance),
+                ctypes.c_double(kcut),
+                ctypes.c_int(mesh))
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
+
+    def get_hessian(self):
+        '''Return energy and analytical (3N,3N) Hessian in atomic units.'''
+        _energy = np.array(0.0, dtype=np.double)
+        _hessian = np.zeros((3*self.natm,3*self.natm))
+        err = libdftd3.dftd3_new_error()
+        try:
+            libdftd3.dftd3_get_dispersion_hessian(
+                err,
+                self._mol,
+                self._disp,
+                self._param,
+                _energy.ctypes.data_as(ctypes.c_void_p),
+                _hessian.ctypes.data_as(ctypes.c_void_p))
+            error_check(err)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
+        return dict(energy=_energy, hessian=_hessian)
 
     def get_dispersion(self, grad=False):
         res = {}
@@ -117,22 +172,23 @@ class DFTD3Dispersion(lib.StreamObject):
             _sigma_str = lib.c_null_ptr()
 
         err = libdftd3.dftd3_new_error()
-        libdftd3.dftd3_get_dispersion(
-            err,
-            self._mol,
-            self._disp,
-            self._param,
-            _energy.ctypes.data_as(ctypes.c_void_p),
-            _gradient_str,
-            _sigma_str)
-        error_check(err)
+        try:
+            libdftd3.dftd3_get_dispersion(
+                err,
+                self._mol,
+                self._disp,
+                self._param,
+                _energy.ctypes.data_as(ctypes.c_void_p),
+                _gradient_str,
+                _sigma_str)
+            error_check(err)
 
-        res = dict(energy=_energy)
-        if _gradient is not None:
-            res.update(gradient=_gradient)
-        if _sigma is not None:
-            res.update(virial=_sigma)
-
-        libdftd3.dftd3_delete_error(ctypes.byref(err))
+            res = dict(energy=_energy)
+            if _gradient is not None:
+                res.update(gradient=_gradient)
+            if _sigma is not None:
+                res.update(virial=_sigma)
+        finally:
+            libdftd3.dftd3_delete_error(ctypes.byref(err))
 
         return res
