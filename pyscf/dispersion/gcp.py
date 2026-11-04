@@ -85,7 +85,16 @@ class GCP(lib.StreamObject):
             libdftd3.dftd3_delete_structure(ctypes.byref(self._mol))
 
     def set_realspace_cutoff(self, bas, srb):
-        '''Set basis and short-range correction cutoffs in Bohr.'''
+        '''Set realspace cutoffs for gCP and short-range corrections in Bohr.
+
+        Args:
+            bas : float
+                Cutoff radius for the geometric counterpoise correction to
+                basis-set superposition error.
+            srb : float
+                Cutoff radius for the short-range bond correction to basis-set
+                incompleteness, when included in the selected method.
+        '''
         err = libdftd3.dftd3_new_error()
         try:
             libdftd3.dftd3_set_gcp_realspace_cutoff(
@@ -98,7 +107,13 @@ class GCP(lib.StreamObject):
             libdftd3.dftd3_delete_error(ctypes.byref(err))
 
     def get_hessian(self):
-        '''Return energy and analytical (3N,3N) Hessian in atomic units.'''
+        '''Return counterpoise energy and analytical Cartesian Hessian.
+
+        Returns:
+            A dict with keys 'energy' (scalar array in Hartree) and 'hessian'
+            ((3N,3N) array in Hartree/Bohr**2), where N is the number of atoms.
+            Both Hessian axes follow the order x1, y1, z1, x2, y2, z2, ...
+        '''
         _energy = np.array(0.0, dtype=np.double)
         _hessian = np.zeros((3*self.natm,3*self.natm))
         err = libdftd3.dftd3_new_error()

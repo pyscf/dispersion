@@ -141,7 +141,22 @@ class DFTD4Dispersion(lib.StreamObject):
         return
 
     def set_realspace_cutoff(self, disp2, disp3, cn, width2=0.0, width3=0.0):
-        '''Set realspace cutoffs and smoothing widths in Bohr.'''
+        '''Set realspace cutoffs and smoothing widths in Bohr.
+
+        Args:
+            disp2 : float
+                Cutoff radius for two-body dispersion interactions.
+            disp3 : float
+                Cutoff radius for three-body Axilrod-Teller-Muto interactions.
+            cn : float
+                Cutoff radius for evaluating coordination numbers.
+            width2, width3 : float, optional
+                Smoothing widths for the two-body and three-body cutoffs,
+                respectively. Positive widths are capped at the corresponding
+                cutoff. The switching function decreases from one to zero
+                between cutoff-width and cutoff. Non-positive widths disable
+                smoothing. The default is 0.0.
+        '''
         err = libdftd4.dftd4_new_error()
         try:
             libdftd4.dftd4_set_model_realspace_cutoff_smooth(

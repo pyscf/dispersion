@@ -105,7 +105,21 @@ class DFTD3Dispersion(lib.StreamObject):
             libdftd3.dftd3_delete_structure(ctypes.byref(self._mol))
 
     def set_realspace_cutoff(self, disp2, disp3, cn, width2=0.0, width3=0.0):
-        '''Set realspace cutoffs and smoothing widths in Bohr.'''
+        '''Set realspace cutoffs and smoothing widths in Bohr.
+
+        Args:
+            disp2 : float
+                Cutoff radius for two-body dispersion interactions.
+            disp3 : float
+                Cutoff radius for three-body Axilrod-Teller-Muto interactions.
+            cn : float
+                Cutoff radius for evaluating coordination numbers.
+            width2, width3 : float, optional
+                Smoothing widths for the two-body and three-body cutoffs,
+                respectively. For 0 < width < cutoff, the switching function
+                decreases from one to zero between cutoff-width and cutoff.
+                Otherwise smoothing is disabled. The default is 0.0.
+        '''
         err = libdftd3.dftd3_new_error()
         try:
             libdftd3.dftd3_set_model_realspace_cutoff_smooth(
@@ -123,8 +137,24 @@ class DFTD3Dispersion(lib.StreamObject):
     def set_ewald_summation(self, rank=0, tolerance=0.0, kcut=0.0, mesh=0):
         '''Enable Ewald summation for 3D PBC with BJ or zero damping.
 
-        mesh=0 selects an automatic particle mesh; mesh<0 uses a direct sum.
-        Non-positive rank, tolerance and kcut select upstream defaults.
+        The two-body realspace cutoff is ignored once Ewald summation is
+        enabled. Analytical Hessians are not supported with Ewald summation.
+
+        Args:
+            rank : int, optional
+                Rank of the reference C6 coefficient expansion. Non-positive
+                values select the rank from tolerance. The default is 0.
+            tolerance : float, optional
+                Maximum relative error of the reference C6 coefficients when
+                rank is selected automatically. Non-positive values use the
+                upstream default of 1e-4. The default is 0.0.
+            kcut : float, optional
+                Reciprocal-space cutoff in Bohr**-1. Non-positive values select
+                the cutoff from the damping radii. The default is 0.0.
+            mesh : int, optional
+                Number of mesh points per direction, rounded up to a power of
+                two. Zero selects a mesh from kcut; negative values use a
+                direct reciprocal-lattice sum. The default is 0.
         '''
         err = libdftd3.dftd3_new_error()
         try:
@@ -140,7 +170,16 @@ class DFTD3Dispersion(lib.StreamObject):
             libdftd3.dftd3_delete_error(ctypes.byref(err))
 
     def get_hessian(self):
-        '''Return energy and analytical (3N,3N) Hessian in atomic units.'''
+        '''Return D3 dispersion energy and analytical Cartesian Hessian.
+
+        Returns:
+            A dict with keys 'energy' (scalar array in Hartree) and 'hessian'
+            ((3N,3N) array in Hartree/Bohr**2), where N is the number of atoms.
+            Both Hessian axes follow the order x1, y1, z1, x2, y2, z2, ...
+
+        Raises:
+            RuntimeError if Ewald summation has been enabled.
+        '''
         _energy = np.array(0.0, dtype=np.double)
         _hessian = np.zeros((3*self.natm,3*self.natm))
         err = libdftd3.dftd3_new_error()
